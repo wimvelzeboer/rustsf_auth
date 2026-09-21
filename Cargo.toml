@@ -1,0 +1,34 @@
+[package]
+name = "rustsf_auth"
+version = "0.1.0"
+authors = ["Wim Velzeboer <wim@velzeboer.nl>"]
+license = "MIT"
+description = "Salesforce OAuth2 authentication SDK for Rust, supporting; JWT, sfdxAuthUrl, ClientCredentials and Web Server flow"
+documentation = "https://docs.rs/rustsf"
+homepage = "https://github.com/wimvelzeboer/rustsf"
+repository = "https://github.com/wimvelzeboer/rustsf"
+readme = "README.md"
+keywords = ["Salesforce", "API", "sdk", "sfdx", "REST"]
+categories = ["web-programming", "web-programming::http-client", "database", "development-tools::build-utils"]
+edition = "2024"
+rust-version = "1.93.0"
+
+[dependencies]
+anyhow = "1.0.104"
+base64 = "0.22"
+env_logger = "0.11.11"
+log = "0.4.34"
+oauth2 = { version = "5", features = ["reqwest"] }
+regex = "1"
+reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
+rsa = { version = "0.9", features = ["pem"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = { version = "0.10", features = ["oid"] }
+thiserror = "2"
+time = "0.3"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+url = "2.5.8"
+
+[dev-dependencies]
+httpmock = "0.7"
