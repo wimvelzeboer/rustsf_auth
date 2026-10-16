@@ -6,7 +6,7 @@
 Salesforce authentication SDK for Rust, supporting the OAuth2.0 flows:
 
 - [Client Credentials](#client-credentials)
-- JWT, 
+- [JWT](#jwt), 
 - [sfdxAuthUrl](#sfdx-authentication-url), 
 - [Web Server](#oauth-web-server-flow),
   (this flow waits for user interaction in a browser)
@@ -129,4 +129,107 @@ let session = config.connect().await.unwrap();
 With This authorization flow, users can authenticate themselves using a browser. 
 The callback url is then invoked by Salesforce that sends a code with which the access_token and refresh token can be requested.
 
-<<<<<<<<<<<<<<<<<<<<<<<<< Continue HERE
+```rust
+#[tokio::main]
+async fn main() {
+	// The client id, urls and scopes.
+	let login_url = "https://example.my.salesforce.com/";
+	let client_id = "PlatformCLI"; // The connected app the SFDX CLI is using
+	let client_secret = None;
+	let scopes = None;
+	let redirect_url = "http://localhost:1717/OauthRedirect";
+
+	// Prepare the Web Service
+	let web_service = OAuthWebService::new(
+		login_url,
+		client_id,
+		client_secret,
+		redirect_url,
+		scopes,
+	)
+		// Optionally: add a custom callback response the user will see after authentication
+		.with_callback_response(
+			r#"<!doctype html>
+<html>
+	<head><title>Authenticated</title></head>
+	<body>
+		<h1>Authentication complete</h1>
+		<p>You can close this tab.</p>
+	</body>
+</html>"#,
+		);
+	let auth_url = web_service.authorization_url().await.unwrap();
+
+	// Ask user to authenticate themselves
+	println!("Open this URL in your browser if it did not open automatically:\n{auth_url}");
+	open_browser(&auth_url);
+	let session = web_service.connect().await.unwrap();
+
+	// Build the headers to include the access token
+	let mut headers = HeaderMap::new();
+	let auth_value = format!("Bearer {}", session.access_token().await.unwrap());
+	headers.insert(AUTHORIZATION, HeaderValue::from_str(&auth_value).unwrap());
+
+	// A REST API request
+	let response = reqwest::Client::builder()
+		.redirect(reqwest::redirect::Policy::none())
+		.connect_timeout(std::time::Duration::from_secs(CONNECT_TIMEOUT))
+		.timeout(std::time::Duration::from_secs(REQUEST_TIMEOUT))
+		.build()
+		.unwrap()
+		.get(format!("{}/services/data", session.instance_url))
+		.headers(headers)
+		.send()
+		.await
+		.unwrap();
+
+	if response.status().is_success() {
+		println!("SUCCESS Response: {:?}", response.text().await.unwrap());
+	} else {
+		println!("ERROR Response: {:?}", response.text().await.unwrap());
+	}
+}
+```
+
+## JWT
+```rust
+#[tokio::main]
+async fn main() {
+	let login_url = env::var("SALESFORCE_LOGIN_URL").unwrap_or_else(|_| "https://login.salesforce.com".to_string());
+	let client_id = env::var("SALESFORCE_CLIENT_ID").expect("SALESFORCE_CLIENT_ID must be set");
+	let username = env::var("SALESFORCE_USERNAME").expect("SALESFORCE_USERNAME must be set");
+	let private_key_path =
+		env::var("SALESFORCE_JWT_PRIVATE_KEY_PATH").expect("SALESFORCE_JWT_PRIVATE_KEY_PATH must be set");
+	let private_key_pem = fs::read_to_string(private_key_path).expect("failed to read the Salesforce JWT private key");
+
+	// The credentials configuration for the JWT bearer flow.
+	let config = SalesforceCredentials::jwt_bearer(login_url, client_id, username, private_key_pem);
+
+	// Construct the authentication session and connect to Salesforce.
+	let session = config.connect().await.unwrap();
+
+	// Build the headers to include the access token.
+	let mut headers = HeaderMap::new();
+	let auth_value = format!("Bearer {}", session.access_token().await.unwrap());
+	headers.insert(AUTHORIZATION, HeaderValue::from_str(&auth_value).unwrap());
+
+	// A REST API request.
+	let response = reqwest::Client::builder()
+		.redirect(reqwest::redirect::Policy::none())
+		.connect_timeout(std::time::Duration::from_secs(CONNECT_TIMEOUT))
+		.timeout(std::time::Duration::from_secs(REQUEST_TIMEOUT))
+		.build()
+		.unwrap()
+		.get(format!("{}/services/data", session.instance_url))
+		.headers(headers)
+		.send()
+		.await
+		.unwrap();
+
+	if response.status().is_success() {
+		println!("SUCCESS Response: {:?}", response.text().await.unwrap());
+	} else {
+		println!("ERROR Response: {:?}", response.text().await.unwrap());
+	}
+}
+```
