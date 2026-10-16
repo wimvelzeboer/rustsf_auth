@@ -1,12 +1,12 @@
 [package]
 name = "rustsf_auth"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Wim Velzeboer <wim@velzeboer.nl>"]
 license = "MIT"
 description = "Salesforce OAuth2 authentication SDK for Rust, supporting; JWT, sfdxAuthUrl, ClientCredentials and Web Server flow"
 documentation = "https://docs.rs/rustsf"
-homepage = "https://github.com/wimvelzeboer/rustsf"
-repository = "https://github.com/wimvelzeboer/rustsf"
+homepage = "https://github.com/wimvelzeboer/rustsf_auth"
+repository = "https://github.com/wimvelzeboer/rustsf_auth"
 readme = "README.md"
 keywords = ["Salesforce", "API", "sdk", "sfdx", "REST"]
 categories = ["web-programming", "web-programming::http-client", "database", "development-tools::build-utils"]
