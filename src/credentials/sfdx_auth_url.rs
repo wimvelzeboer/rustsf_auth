@@ -2,7 +2,6 @@ use log::trace;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use crate::credentials::{http_client, required, SalesforceAuthFlow, SalesforceCredentials};
-use crate::salesforce_auth_token::SalesforceAuthToken;
 use crate::SalesforceAuthError;
 use crate::salesforce_token_response::SalesforceTokenResponse;
 
