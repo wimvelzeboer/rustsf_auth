@@ -38,6 +38,6 @@ jobs:
         with:
           node-version: 24
 
-      - name: Run REST API Integration Tests
+      - name: Run Integration Tests
         run: |
           cargo test --test integration_test -- --include-ignored
