@@ -124,7 +124,7 @@ impl SalesforceCredentials {
 	/// # Ok(())
 	/// # }
 	/// ```
-	pub async fn connect_client_credentials(&self) -> Result<SalesforceTokenResponse, SalesforceAuthError> {
+	pub(crate) async fn connect_client_credentials(&self) -> Result<SalesforceTokenResponse, SalesforceAuthError> {
 		let client_id = required(self.client_id.as_deref(), "client_id")?;
 		let client_secret = required(self.client_secret.as_deref(), "client_secret")?;
 

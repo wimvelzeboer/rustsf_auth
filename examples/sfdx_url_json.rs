@@ -28,8 +28,8 @@ pub const REQUEST_TIMEOUT: u64 = 30;
 async fn main(){
 	
 	// Load the sfdx auth url
-	let file = fs::File::open("my-org-alias.json")?;
-	let sfdx_auth_json: SfdxAuthJson = serde_json::from_reader(file)?;
+	let file = fs::File::open("my-org-alias.json").unwrap();
+	let sfdx_auth_json: SfdxAuthJson = serde_json::from_reader(file).unwrap();
 	
 	// The Credentials configuration
 	let config = SalesforceCredentials::sfdx_url_json(sfdx_auth_json).unwrap();

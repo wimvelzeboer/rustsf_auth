@@ -9,7 +9,7 @@ use tokio::net::TcpListener;
 use url::Url;
 
 use crate::credentials::{
-	http_client, parse_salesforce_identity_ids, required, SalesforceAuthFlow, SalesforceCredentials,
+	http_client, parse_salesforce_identity_ids, SalesforceAuthFlow, SalesforceCredentials,
 };
 use crate::salesforce_token_response::SalesforceTokenResponse;
 use crate::{SalesforceAuthError, SalesforceAuthSession, SalesforceAuthToken};
