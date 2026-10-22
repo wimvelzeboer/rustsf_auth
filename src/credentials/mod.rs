@@ -365,8 +365,6 @@ fn required<'a>(
 	value: Option<&'a str>,
 	field_name: &'static str,
 ) -> Result<&'a str, SalesforceAuthError> {
-	println!("Checking {:?} {:?}", value, field_name);
-
 	value.ok_or(SalesforceAuthError::MissingRequiredField(field_name))
 }
 
