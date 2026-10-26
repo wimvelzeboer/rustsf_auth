@@ -1,10 +1,17 @@
 use std::env;
-
+use log::LevelFilter;
 use rustsf_auth::{SalesforceAuthFlow, SalesforceCredentials, SfdxAuthJson};
 
 #[tokio::test]
 #[ignore = "requires a valid SFDX_AUTH_URL and a Salesforce network connection"]
 async fn test_sfdx_auth_json_methods() {
+
+	env_logger::builder()
+		.filter_level(LevelFilter::Trace)
+		.format_target(false)
+		.init();
+
+
 	let sfdx_auth_url = env::var("SFDX_AUTH_URL")
 		.expect("SFDX_AUTH_URL must contain a valid Salesforce SFDX auth URL");
 

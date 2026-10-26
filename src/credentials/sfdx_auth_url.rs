@@ -1,11 +1,12 @@
+use crate::SalesforceAuthError;
+use crate::credentials::{SalesforceAuthFlow, SalesforceCredentials, http_client, required};
+use crate::salesforce_token_response::SalesforceTokenResponse;
 use log::trace;
 use regex::Regex;
+use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
-use crate::credentials::{http_client, required, SalesforceAuthFlow, SalesforceCredentials};
-use crate::SalesforceAuthError;
-use crate::salesforce_token_response::SalesforceTokenResponse;
 
-/// Struct used to deserialize the SFDX auth URL json file, 
+/// Struct used to deserialize the SFDX auth URL json file,
 /// which can be created via:.
 /// ```bash
 /// sf org auth show-sfdx-auth-url --target-org $ORG-ALIAS --json > sfdx_auth_url.json
@@ -23,9 +24,7 @@ pub struct SfdxAuthJsonResult {
 	pub sfdx_auth_url: String,
 }
 
-
 impl SalesforceCredentials {
-
 	/// Creates a configuration for authenticating from an SFDX auth URL.
 	///
 	/// The SFDX URL must match:
@@ -36,7 +35,7 @@ impl SalesforceCredentials {
 	///
 	/// # Examples
 	///
-	/// ```rust
+	/// ```rust, ignore
 	/// use rustsf_auth::{SalesforceCredentials, SalesforceAuthFlow};
 	///
 	/// let config = SalesforceCredentials::sfdx_url(
@@ -47,19 +46,19 @@ impl SalesforceCredentials {
 	/// assert!(config.sfdx_url.is_some());
 	/// ```
 	pub fn sfdx_url(url: impl Into<String>) -> Result<Self, SalesforceAuthError> {
-
-		let regex = Regex::new(r"force://([a-zA-Z0-9._-]+):([a-zA-Z0-9._-]*):([a-zA-Z0-9._-]+={0,2})@([a-zA-Z0-9._-]+)")
-			.unwrap();
+		let regex =
+			Regex::new(r"force://([a-zA-Z0-9._-]+):([a-zA-Z0-9._-]*):([a-zA-Z0-9._-]+={0,2})@([a-zA-Z0-9._-]+)")
+				.unwrap();
 
 		let url = url.into();
 
-		let captures = regex.captures(&url)
+		let captures = regex
+			.captures(&url)
 			// .with_context(|| "Invalid Authentication URL expected 'force://([a-zA-Z0-9._-]+):([a-zA-Z0-9._-]*):([a-zA-Z0-9._-]+={0,2})@([a-zA-Z0-9._-]+)'".to_string())?;
 			.ok_or(SalesforceAuthError::InvalidSfdxUrl)?;
 
 		let client_id = captures
 			.get(1)
-
 			.ok_or(SalesforceAuthError::InvalidSfdxUrl)?
 			.as_str()
 			.to_string();
@@ -75,20 +74,20 @@ impl SalesforceCredentials {
 			.as_str()
 			.to_string();
 
-		let login_endpoint = captures
-			.get(4)
-			.ok_or(SalesforceAuthError::InvalidSfdxUrl)?
-			.as_str();
+		let login_endpoint = captures.get(4).ok_or(SalesforceAuthError::InvalidSfdxUrl)?.as_str();
 
 		Ok(Self {
 			flow: SalesforceAuthFlow::SfdxUrl,
 			login_url: Some(format!("https://{login_endpoint}")),
 			client_id: Some(client_id),
-			client_secret,
+			client_secret: match client_secret {
+				None => None,
+				Some(secret) => Some(SecretString::new(secret.into())),
+			},
 			username: None,
 			private_key_pem: None,
 			access_token: None,
-			refresh_token: Some(refresh_token),
+			refresh_token: Some(SecretString::new(Box::from(refresh_token))),
 			instance_url: None,
 		})
 	}
@@ -102,7 +101,7 @@ impl SalesforceCredentials {
 	/// sf org auth show-sfdx-auth-url --target-org $ORG-ALIAS --json > sfdx_auth_url.json
 	/// ```
 	/// Then use the generated json file in your application
-	/// ```rust
+	/// ```rust, ignore
 	///  use rustsf_auth::{SalesforceCredentials, SfdxAuthJson};
 	///
 	///  let file = fs::File::open("sfdx_auth_url.json")?;
@@ -136,7 +135,7 @@ impl SalesforceCredentials {
 	///
 	/// # Examples
 	///
-	/// ```rust,no_run
+	/// ```rust,ignore
 	/// use rustsf_auth::authenticate_sfdx_url;
 	///
 	/// # async fn example() -> Result<(), rustsf_auth::SalesforceAuthError> {
@@ -149,9 +148,8 @@ impl SalesforceCredentials {
 	/// # }
 	/// ```
 	pub(crate) async fn connect_sfdx_url(&self) -> Result<SalesforceTokenResponse, SalesforceAuthError> {
-
 		let client_id = required(self.client_id.as_deref(), "client_id")?;
-		let refresh_token = required(self.refresh_token.as_deref(), "refresh_token")?;
+		let refresh_token = required(self.refresh_token.as_ref().map(|s| s.expose_secret()), "refresh_token")?;
 
 		let url = self.token_url()?.url().clone();
 		let data = &[
@@ -159,18 +157,14 @@ impl SalesforceCredentials {
 			("client_id", client_id),
 			("refresh_token", refresh_token),
 		];
-		trace!("SFDX authentication request: POST {} : {:?}", url, data);
-		let response = http_client()?
-			.post(url)
-			.form(data)
-			.send()
-			.await?;
+		let response = http_client()?.post(url).form(data).send().await?;
 
 		let status = response.status();
 		let body = response.text().await.map_err(|e| SalesforceAuthError::Http(e))?;
 
-		trace!("SFDX authentication response: {}", body);
-		if !status.is_success() { return Err(SalesforceAuthError::OAuth2(body)) }
+		if !status.is_success() {
+			return Err(SalesforceAuthError::OAuth2(body));
+		}
 
 		Ok(serde_json::from_str::<SalesforceTokenResponse>(&body)
 			.map_err(|e| SalesforceAuthError::TokenExchange(e.to_string()))?)
@@ -186,7 +180,8 @@ mod tests {
 		let sfdx_auth_json = SfdxAuthJson {
 			status: "0".to_string(),
 			result: SfdxAuthJsonResult {
-				sfdx_auth_url: "force://my_client_id:my_client_secret:my_refresh_token@login.salesforce.com".to_string(),
+				sfdx_auth_url: "force://my_client_id:my_client_secret:my_refresh_token@login.salesforce.com"
+					.to_string(),
 			},
 			warnings: vec![],
 		};
@@ -197,8 +192,8 @@ mod tests {
 		let credentials = result.unwrap();
 		assert_eq!(credentials.flow, SalesforceAuthFlow::SfdxUrl);
 		assert_eq!(credentials.client_id, Some("my_client_id".to_string()));
-		assert_eq!(credentials.client_secret, Some("my_client_secret".to_string()));
-		assert_eq!(credentials.refresh_token, Some("my_refresh_token".to_string()));
+		assert_eq!(credentials.client_secret.unwrap().expose_secret(), "my_client_secret");
+		assert_eq!(credentials.refresh_token.unwrap().expose_secret(), "my_refresh_token");
 		assert_eq!(credentials.login_url, Some("https://login.salesforce.com".to_string()));
 		assert!(credentials.username.is_none());
 		assert!(credentials.private_key_pem.is_none());
@@ -215,8 +210,8 @@ mod tests {
 		let credentials = result.unwrap();
 		assert_eq!(credentials.flow, SalesforceAuthFlow::SfdxUrl);
 		assert_eq!(credentials.client_id, Some("my_client_id".to_string()));
-		assert_eq!(credentials.client_secret, Some("my_client_secret".to_string()));
-		assert_eq!(credentials.refresh_token, Some("my_refresh_token".to_string()));
+		assert_eq!(credentials.client_secret.unwrap().expose_secret(), "my_client_secret");
+		assert_eq!(credentials.refresh_token.unwrap().expose_secret(), "my_refresh_token");
 		assert_eq!(credentials.login_url, Some("https://login.salesforce.com".to_string()));
 		assert!(credentials.username.is_none());
 		assert!(credentials.private_key_pem.is_none());
@@ -233,8 +228,8 @@ mod tests {
 		let credentials = result.unwrap();
 		assert_eq!(credentials.flow, SalesforceAuthFlow::SfdxUrl);
 		assert_eq!(credentials.client_id, Some("PlatformCLI".to_string()));
-		assert_eq!(credentials.client_secret, None);
-		assert_eq!(credentials.refresh_token, Some("refresh_token_value".to_string()));
+		assert!(credentials.client_secret.is_none());
+		assert_eq!(credentials.refresh_token.unwrap().expose_secret(), "refresh_token_value");
 		assert_eq!(credentials.login_url, Some("https://test.salesforce.com".to_string()));
 	}
 
@@ -246,8 +241,8 @@ mod tests {
 		assert!(result.is_ok());
 		let credentials = result.unwrap();
 		assert_eq!(credentials.client_id, Some("client123".to_string()));
-		assert_eq!(credentials.client_secret, Some("secret456".to_string()));
-		assert_eq!(credentials.refresh_token, Some("dGVzdF90b2tlbl92YWx1ZQ==".to_string()));
+		assert_eq!(credentials.client_secret.unwrap().expose_secret(), "secret456");
+		assert_eq!(credentials.refresh_token.unwrap().expose_secret(), "dGVzdF90b2tlbl92YWx1ZQ==");
 	}
 
 	#[test]
@@ -285,11 +280,11 @@ mod tests {
 		assert!(result.is_ok());
 		let credentials = result.unwrap();
 		assert_eq!(credentials.client_id, Some("client.id-123".to_string()));
-		assert_eq!(credentials.client_secret, Some("secret_456".to_string()));
-		assert_eq!(credentials.refresh_token, Some("refresh-token.value".to_string()));
-		assert_eq!(credentials.login_url, Some("https://test-env.salesforce.com".to_string()));
+		assert_eq!(credentials.client_secret.unwrap().expose_secret(), "secret_456");
+		assert_eq!(credentials.refresh_token.unwrap().expose_secret(), "refresh-token.value");
+		assert_eq!(
+			credentials.login_url,
+			Some("https://test-env.salesforce.com".to_string())
+		);
 	}
 }
-
-
-

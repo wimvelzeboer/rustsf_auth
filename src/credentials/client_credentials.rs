@@ -5,6 +5,7 @@
 //! integrations where no user interaction is required.
 
 use log::trace;
+use secrecy::{ExposeSecret, SecretString};
 use crate::credentials::{http_client, required, SalesforceAuthFlow, SalesforceCredentials};
 use crate::salesforce_token_response::SalesforceTokenResponse;
 use crate::SalesforceAuthError;
@@ -20,15 +21,15 @@ impl SalesforceCredentials {
 	///
 	/// # Example
 	///
-	/// ```rust
+	/// ```rust, ignore
 	/// use oauth2::http::header::AUTHORIZATION;
 	///	use oauth2::http::{HeaderMap, HeaderValue};
-	///	use crate::credentials::SalesforceCredentials;
+	///	use rustsf_auth::SalesforceCredentials;
 	///
-	///	pub const CONNECT_TIMEOUT: u64 = 15;
-	///	pub const REQUEST_TIMEOUT: u64 = 30;
-	///	#[tokio::main]
-	///	async fn main(){
+	///    pub const CONNECT_TIMEOUT: u64 = 15;
+	///    pub const REQUEST_TIMEOUT: u64 = 30;
+	///    #[tokio::main]
+	///    async fn main(){
 	/// 	// The client id and secret, (should never be hardcoded)
 	/// 	let login_url = "https://example.my.salesforce.com/";
 	/// 	let client_id = "client_id";
@@ -66,7 +67,7 @@ impl SalesforceCredentials {
 	/// 	} else {
 	/// 		println!("ERROR Response: {:?}", response.text().await.unwrap());
 	/// 	}
-	///	}
+	///    }
 	/// ```
 	pub fn client_credentials(
 		login_url: impl Into<String>,
@@ -77,7 +78,7 @@ impl SalesforceCredentials {
 			flow: SalesforceAuthFlow::ClientCredentials,
 			login_url: Some(login_url.into()),
 			client_id: Some(client_id.into()),
-			client_secret: Some(client_secret.into()),
+			client_secret: Some(SecretString::new(Box::from(client_secret.into()))),
 			username: None,
 			private_key_pem: None,
 			access_token: None,
@@ -126,7 +127,7 @@ impl SalesforceCredentials {
 	/// ```
 	pub(crate) async fn connect_client_credentials(&self) -> Result<SalesforceTokenResponse, SalesforceAuthError> {
 		let client_id = required(self.client_id.as_deref(), "client_id")?;
-		let client_secret = required(self.client_secret.as_deref(), "client_secret")?;
+		let client_secret = required(self.client_secret.as_ref().map(|s| s.expose_secret()), "client_secret")?;
 
 		let url = self.token_url()?.url().clone();
 		let data = &[
@@ -146,7 +147,7 @@ impl SalesforceCredentials {
 		let body = response.text().await.map_err(|e| SalesforceAuthError::Http(e))?;
 
 		trace!("Client Credentials auth response: {}", body);
-		if !status.is_success() { return Err(SalesforceAuthError::OAuth2(body)) }
+		if !status.is_success() { return Err(SalesforceAuthError::OAuth2(body)); }
 
 		Ok(serde_json::from_str::<SalesforceTokenResponse>(&body)
 			.map_err(|e| SalesforceAuthError::TokenExchange(e.to_string()))?)

@@ -4,6 +4,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use log::trace;
 use oauth2::TokenUrl;
+use secrecy::SecretString;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 use url::Url;
@@ -314,11 +315,17 @@ impl OAuthWebService {
 			flow: SalesforceAuthFlow::AccessToken,
 			login_url: Some(self.login_url.clone()),
 			client_id: Some(self.client_id.clone()),
-			client_secret: self.client_secret.clone(),
+			client_secret: match &self.client_secret {
+				Some( client_secret) => Some(SecretString::new(Box::from(client_secret.clone()))),
+				None => None,
+			},
 			username: None,
 			private_key_pem: None,
-			access_token: Some(token_response.access_token.clone()),
-			refresh_token: token_response.refresh_token.clone(),
+			access_token: Some(SecretString::new(Box::from(token_response.access_token.clone()))),
+			refresh_token: match token_response.refresh_token {
+				Some(ref refresh_token) => Some(SecretString::new(Box::from(refresh_token.clone()))),
+				None => None,
+			},
 			instance_url: Some(instance_url.clone()),
 		};
 
