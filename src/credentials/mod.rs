@@ -9,6 +9,7 @@ use std::time::Duration;
 use log::trace;
 use oauth2::TokenUrl;
 use reqwest::Client;
+use secrecy::{ExposeSecret, SecretString};
 use crate::{SalesforceAuthError, SalesforceAuthSession, SalesforceAuthToken};
 use crate::salesforce_token_response::SalesforceTokenResponse;
 
@@ -68,19 +69,19 @@ pub struct SalesforceCredentials {
 	pub client_id: Option<String>,
 
 	/// Salesforce connected app client secret.
-	pub client_secret: Option<String>,
+	pub client_secret: Option<SecretString>,
 
 	/// Salesforce username used by the JWT bearer flow.
 	pub username: Option<String>,
 
 	/// RSA private key in PEM format used by the JWT bearer flow.
-	pub private_key_pem: Option<String>,
+	pub private_key_pem: Option<SecretString>,
 
 	/// Existing Salesforce access token.
-	pub access_token: Option<String>,
+	pub access_token: Option<SecretString>,
 
 	/// Salesforce refresh token.
-	pub refresh_token: Option<String>,
+	pub refresh_token: Option<SecretString>,
 
 	/// Salesforce instance URL, for example `https://example.my.salesforce.com`.
 	pub instance_url: Option<String>,
@@ -136,8 +137,9 @@ impl SalesforceCredentials {
 		}.to_string();
 
 		let mut credentials = self;
-		if credentials.refresh_token.is_none() {
-			credentials.refresh_token = token_response.refresh_token.clone();
+		if credentials.refresh_token.is_none() && token_response.refresh_token.is_some() {
+			let refresh_token = token_response.refresh_token.unwrap();
+			credentials.refresh_token = Some(SecretString::new(refresh_token.into()));
 		}
 
 		Ok(SalesforceAuthSession {
@@ -253,7 +255,7 @@ impl SalesforceCredentials {
 				let data = &[
 					("grant_type", "refresh_token"),
 					("client_id", client_id),
-					("refresh_token", refresh_token),
+					("refresh_token", refresh_token.expose_secret()),
 				];
 				trace!("Token exchange request: POST {} : {:?}", url, data);
 

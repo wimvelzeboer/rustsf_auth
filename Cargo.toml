@@ -22,6 +22,7 @@ oauth2 = { version = "5", features = ["reqwest"] }
 regex = "1"
 reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
 rsa = { version = "0.9", features = ["pem"] }
+secrecy = "0.10.3"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = { version = "0.10", features = ["oid"] }

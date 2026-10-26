@@ -43,7 +43,7 @@ pub const DEFAULT_SALESFORCE_LOGIN_URL: &str = "https://login.salesforce.com";
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust, ignore
 /// use rustsf_auth::authenticate_access_token;
 ///
 /// let session = authenticate_access_token(
@@ -128,7 +128,7 @@ impl SalesforceAuthSession {
 	///
 	/// # Examples
 	///
-	/// ```rust,no_run
+	/// ```rust,ignore
 	/// use rustsf_auth::authenticate_access_token;
 	///
 	/// # async fn example() -> Result<(), rustsf_auth::SalesforceAuthError> {

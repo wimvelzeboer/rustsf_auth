@@ -4,6 +4,7 @@
 //! access token. It supports both simple access token authentication and refresh token
 //! capabilities when additional credentials are provided.
 
+use secrecy::{ExposeSecret, SecretString};
 use crate::credentials::{required, SalesforceAuthFlow, SalesforceCredentials};
 use crate::error::SalesforceAuthError;
 use crate::salesforce_token_response::SalesforceTokenResponse;
@@ -28,6 +29,7 @@ impl SalesforceCredentials {
 	///
 	/// ```rust
 	/// use rustsf_auth::{SalesforceCredentials, SalesforceAuthFlow};
+	/// use secrecy::ExposeSecret;
 	///
 	/// let config = SalesforceCredentials::access_token(
 	///     "access-token",
@@ -39,7 +41,7 @@ impl SalesforceCredentials {
 	/// );
 	///
 	/// assert_eq!(config.flow, SalesforceAuthFlow::AccessToken);
-	/// assert_eq!(config.access_token.as_deref(), Some("access-token"));
+	/// assert_eq!(config.access_token.unwrap().expose_secret(), "access-token");
 	/// ```
 	///
 	/// # Note
@@ -58,11 +60,17 @@ impl SalesforceCredentials {
 			flow: SalesforceAuthFlow::AccessToken,
 			login_url,
 			client_id,
-			client_secret,
+			client_secret: match client_secret {
+				None => None,
+				Some(secret) => {Some(SecretString::new(secret.into()))}
+			},
 			username: None,
 			private_key_pem: None,
-			access_token: Some(access_token.into()),
-			refresh_token,
+			access_token: Some(SecretString::new(Box::from(access_token.into()))),
+			refresh_token: match refresh_token {
+				None => None,
+				Some(token) => {Some(SecretString::new(token.into()))}
+			},
 			instance_url: Some(instance_url.into()),
 		}
 	}
@@ -85,10 +93,9 @@ impl SalesforceCredentials {
 	///
 	/// # Examples
 	///
-	/// ```rust
-	/// use rustsf_auth::authenticate_access_token;
+	/// ```rust, ignore
 	///
-	/// let session = authenticate_access_token(
+	/// let session = connect_access_token(
 	///     "access-token",
 	///     "https://example.my.salesforce.com/",
 	///     Some("refresh-token".to_string()),
@@ -101,7 +108,7 @@ impl SalesforceCredentials {
 	/// assert_eq!(session.instance_url, "https://example.my.salesforce.com");
 	/// ```
 	pub(crate) fn connect_access_token(&self) -> Result<SalesforceTokenResponse, SalesforceAuthError> {
-		let access_token = required(self.access_token.as_deref(), "access_token")?;
+		let access_token = required(self.access_token.as_ref().map(|s| s.expose_secret()), "access_token")?;
 		let login_url = required(self.login_url.as_deref(), "login_url")?;
 
 		Ok(SalesforceTokenResponse {

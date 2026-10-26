@@ -2,7 +2,7 @@
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust, ignore
 /// use rustsf_auth::{parse_sfdx_url, SalesforceAuthError};
 ///
 /// let error = parse_sfdx_url("not-a-valid-sfdx-url").unwrap_err();

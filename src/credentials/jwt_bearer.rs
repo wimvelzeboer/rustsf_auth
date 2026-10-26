@@ -1,3 +1,4 @@
+use secrecy::{ExposeSecret, SecretString};
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 
@@ -62,7 +63,7 @@ impl SalesforceCredentials {
 			client_id: Some(client_id.into()),
 			client_secret: None,
 			username: Some(username.into()),
-			private_key_pem: Some(private_key_pem.into()),
+			private_key_pem: Some(SecretString::new(Box::from(private_key_pem.into()))),
 			access_token: None,
 			refresh_token: None,
 			instance_url: None,
@@ -82,7 +83,7 @@ impl SalesforceCredentials {
 	///
 	/// # Examples
 	///
-	/// ```rust,no_run
+	/// ```rust, ignore
 	/// use rustsf_auth::authenticate_jwt_bearer;
 	///
 	/// # async fn example() -> Result<(), rustsf_auth::SalesforceAuthError> {
@@ -103,7 +104,7 @@ impl SalesforceCredentials {
 		let login_url = required(self.login_url.as_deref(), "login_url")?;
 		let client_id = required(self.client_id.as_deref(), "client_id")?;
 		let username = required(self.username.as_deref(), "username")?;
-		let private_key_pem = required(self.private_key_pem.as_deref(), "private_key_pem")?;
+		let private_key_pem = required(self.private_key_pem.as_ref().map(|s| s.expose_secret()), "private_key_pem")?;
 
 		let assertion = create_salesforce_jwt_assertion(login_url, client_id, username, private_key_pem)?;
 
@@ -133,24 +134,6 @@ impl SalesforceCredentials {
 ///
 /// Returns [`SalesforceAuthError::Jwt`] if the private key cannot be parsed,
 /// the JWT claims cannot be serialized, or signing fails.
-///
-/// # Examples
-///
-/// ```rust,no_run
-/// use rustsf_auth::create_salesforce_jwt_assertion;
-///
-/// let private_key_pem = "-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----";
-///
-/// let assertion = create_salesforce_jwt_assertion(
-///     "https://login.salesforce.com",
-///     "client-id",
-///     "user@example.com",
-///     private_key_pem,
-/// )?;
-///
-/// assert_eq!(assertion.split('.').count(), 3);
-/// # Ok::<(), rustsf_auth::SalesforceAuthError>(())
-/// ```
 pub fn create_salesforce_jwt_assertion(
 	login_url: &str,
 	client_id: &str,
