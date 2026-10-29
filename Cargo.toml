@@ -1,6 +1,6 @@
 [package]
 name = "rustsf_auth"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["Wim Velzeboer <wim@velzeboer.nl>"]
 license = "MIT"
 description = "Salesforce OAuth2 authentication SDK for Rust, supporting; JWT, sfdxAuthUrl, ClientCredentials and Web Server flow"
