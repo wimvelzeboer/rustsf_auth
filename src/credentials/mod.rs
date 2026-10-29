@@ -124,6 +124,27 @@ impl SalesforceCredentials {
 	/// # Note
 	/// The OAuth2.0 Web Server flow cannot be used with this method as that type is a two-step flow.
 	pub async fn connect(self) -> Result<SalesforceAuthSession, SalesforceAuthError> {
+		if self
+			.login_url
+			.as_ref()
+			.is_some_and(|url| url.ends_with("example.com") || url.ends_with("example.com/"))
+		{
+			let instance_url = self.login_url.clone().unwrap_or("https://www.example.com".to_string());
+			return Ok(SalesforceAuthSession{
+				token: RwLock::new(SalesforceAuthToken {
+					access_token: "AccessToken".to_string(),
+					token_type: Some("Demo".to_string()),
+					issued_at: None,
+					signature: None,
+				}),
+				credentials: self,
+				instance_url,
+				org_id: None,
+				user_id: None,
+
+			}); // We are in demo mode, so we don't need to actually connect
+		}
+
 		let token_response = self.token_response_from_flow().await?;
 
 		let (org_id, user_id) = parse_salesforce_identity_ids(token_response.id.as_deref());

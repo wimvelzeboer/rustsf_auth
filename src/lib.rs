@@ -17,9 +17,9 @@ pub mod salesforce_token_response;
 pub use self::error::SalesforceAuthError;
 use self::salesforce_auth_token::SalesforceAuthToken;
 
-pub use self::credentials::{SalesforceAuthFlow, SalesforceCredentials};
 pub use self::credentials::sfdx_auth_url::SfdxAuthJson;
 pub use self::credentials::web_server::OAuthWebService;
+pub use self::credentials::{SalesforceAuthFlow, SalesforceCredentials};
 
 /// The default Salesforce production login URL.
 ///
@@ -33,7 +33,6 @@ pub use self::credentials::web_server::OAuthWebService;
 /// assert_eq!(DEFAULT_SALESFORCE_LOGIN_URL, "https://login.salesforce.com");
 /// ```
 pub const DEFAULT_SALESFORCE_LOGIN_URL: &str = "https://login.salesforce.com";
-
 
 /// Authenticated Salesforce session data.
 ///
@@ -76,17 +75,12 @@ pub struct SalesforceAuthSession {
 }
 
 impl SalesforceAuthSession {
-
 	fn token_read(&self) -> RwLockReadGuard<'_, SalesforceAuthToken> {
-		self.token
-			.read()
-			.unwrap_or_else(|poisoned| poisoned.into_inner())
+		self.token.read().unwrap_or_else(|poisoned| poisoned.into_inner())
 	}
 
 	fn token_write(&self) -> RwLockWriteGuard<'_, SalesforceAuthToken> {
-		self.token
-			.write()
-			.unwrap_or_else(|poisoned| poisoned.into_inner())
+		self.token.write().unwrap_or_else(|poisoned| poisoned.into_inner())
 	}
 
 	fn token(&self) -> SalesforceAuthToken {
@@ -112,7 +106,6 @@ impl SalesforceAuthSession {
 	pub fn signature(&self) -> Option<String> {
 		self.token().signature
 	}
-
 
 	/// Refreshes this session's access token.
 	///
@@ -147,6 +140,14 @@ impl SalesforceAuthSession {
 	/// # }
 	/// ```
 	pub async fn refresh_access_token(&self) -> Result<(), SalesforceAuthError> {
+		if self
+			.credentials
+			.instance_url
+			.as_ref()
+			.is_some_and(|url| url.ends_with("example.com") || url.ends_with("example.com/"))
+		{
+			return Ok(()); // We are in demo mode, so we don't need to refresh the token
+		}
 
 		let token = self.credentials.refresh().await?;
 		*self.token_write() = token;
@@ -154,7 +155,6 @@ impl SalesforceAuthSession {
 		Ok(())
 	}
 }
-
 
 fn salesforce_token_endpoint(login_url: &str) -> String {
 	format!("{}/services/oauth2/token", login_url.trim_end_matches('/'))
@@ -170,13 +170,13 @@ mod tests {
 
 	fn token_body() -> serde_json::Value {
 		json!({
-            "access_token": "access-token-123",
-            "instance_url": "https://example.my.salesforce.com",
-            "id": "https://login.salesforce.com/id/00D/example",
-            "token_type": "Bearer",
-            "issued_at": "1700000000000",
-            "signature": "signature"
-        })
+			"access_token": "access-token-123",
+			"instance_url": "https://example.my.salesforce.com",
+			"id": "https://login.salesforce.com/id/00D/example",
+			"token_type": "Bearer",
+			"issued_at": "1700000000000",
+			"signature": "signature"
+		})
 	}
 
 	#[test]
