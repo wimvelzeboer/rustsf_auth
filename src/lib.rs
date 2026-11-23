@@ -13,6 +13,7 @@ pub mod credentials;
 pub mod error;
 pub(crate) mod salesforce_auth_token;
 pub mod salesforce_token_response;
+mod session_binary;
 
 pub use self::error::SalesforceAuthError;
 use self::salesforce_auth_token::SalesforceAuthToken;
@@ -75,6 +76,32 @@ pub struct SalesforceAuthSession {
 }
 
 impl SalesforceAuthSession {
+	/// Exports this session to a versioned binary snapshot.
+	///
+	/// The returned bytes contain the access token and any configured credentials,
+	/// including secrets. This format is not encrypted; store and handle the bytes
+	/// as securely as the original credentials.
+	///
+	/// # Errors
+	///
+	/// Returns [`SalesforceAuthError::SessionBinary`] if the session cannot be encoded.
+	pub fn to_binary(&self) -> Result<Vec<u8>, SalesforceAuthError> {
+		session_binary::to_binary(self)
+	}
+
+	/// Restores a session from a binary snapshot created by [`Self::to_binary`].
+	///
+	/// The returned session has its own token lock and reconstructed secret values.
+	/// The binary format is not encrypted and may contain credentials in plaintext.
+	///
+	/// # Errors
+	///
+	/// Returns [`SalesforceAuthError::SessionBinary`] if the bytes are invalid,
+	/// truncated, use an unsupported format version, or contain trailing data.
+	pub fn from_binary(bytes: &[u8]) -> Result<Self, SalesforceAuthError> {
+		session_binary::from_binary(bytes)
+	}
+
 	fn token_read(&self) -> RwLockReadGuard<'_, SalesforceAuthToken> {
 		self.token.read().unwrap_or_else(|poisoned| poisoned.into_inner())
 	}

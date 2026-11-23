@@ -10,6 +10,7 @@ use log::trace;
 use oauth2::TokenUrl;
 use reqwest::Client;
 use secrecy::{ExposeSecret, SecretString};
+use serde::{Deserialize, Serialize};
 use crate::{SalesforceAuthError, SalesforceAuthSession, SalesforceAuthToken};
 use crate::salesforce_token_response::SalesforceTokenResponse;
 
