@@ -26,6 +26,10 @@ pub enum SalesforceAuthError {
 	#[error("OAuth state mismatch")]
 	OAuthStateMismatch,
 
+	/// A Salesforce authentication session binary could not be encoded or decoded.
+	#[error("session binary error: {0}")]
+	SessionBinary(String),
+
 	/// No unconsumed OAuth authorization URL is available for this connection attempt.
 	#[error("authorization URL must be generated before connecting")]
 	MissingAuthorizationUrl,

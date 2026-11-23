@@ -1,6 +1,6 @@
 [package]
 name = "rustsf_auth"
-version = "0.2.3"
+version = "0.2.4"
 authors = ["Wim Velzeboer <wim@velzeboer.nl>"]
 license = "MIT"
 description = "Salesforce OAuth2 authentication SDK for Rust, supporting; JWT, sfdxAuthUrl, ClientCredentials and Web Server flow"
@@ -16,6 +16,7 @@ rust-version = "1.93.0"
 [dependencies]
 anyhow = "1.0.104"
 base64 = "0.22"
+bincode-next = { version = "3.1.1", features = ["serde"] }
 env_logger = "0.11.11"
 log = "0.4.34"
 oauth2 = { version = "5", features = ["reqwest"] }

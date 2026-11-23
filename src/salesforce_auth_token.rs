@@ -1,8 +1,8 @@
 use crate::salesforce_token_response::SalesforceTokenResponse;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct SalesforceAuthToken {
 	pub(crate) access_token: String,
 
