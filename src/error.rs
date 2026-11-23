@@ -26,6 +26,10 @@ pub enum SalesforceAuthError {
 	#[error("OAuth state mismatch")]
 	OAuthStateMismatch,
 
+	/// No unconsumed OAuth authorization URL is available for this connection attempt.
+	#[error("authorization URL must be generated before connecting")]
+	MissingAuthorizationUrl,
+
 	/// A URL failed to parse.
 	#[error("invalid URL `{url}`: {source}")]
 	InvalidUrl {
